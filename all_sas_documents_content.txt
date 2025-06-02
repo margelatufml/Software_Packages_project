@@ -1,0 +1,1425 @@
+*Crearea setului de date pentru Cluj;
+data angajatiCJ;
+	input Angajat $ Gen $ Zona$;
+datalines;
+Irimia  M Cluj
+Velicu  F Cluj
+;
+run;
+
+data angajati;
+	set angajatiBV angajatiCJ;
+run; 
+PROC PRINT DATA = angajati;
+   TITLE 'Setul de date combinat fara redenumirea variabilelor';
+RUN;
+
+data angajati;
+	set angajatiBV angajatiCJ (RENAME=(Zona=Judet));
+run; 
+PROC PRINT DATA = angajati;
+   TITLE 'Setul de date combinat cu redenumirea unei variabile';
+RUN;
+
+data angajati;
+	set angajatiBV (RENAME =(Angajat=Nume Gen=Sex)) 
+		angajatiCJ (RENAME=(Angajat=Nume Gen = Sex Zona=Judet));
+run; 
+PROC PRINT DATA = angajati;
+   TITLE 'Setul de date combinat cu redenumirea mai multor variabile';
+RUN;
+
+2. Interclasarea seturilor de date folosind declaraţia SET 
+Dacă seturile de date sunt deja sortate (prin intermediul procedurii SORT) după o variabilă relevantă, atunci doar simpla concatenare a acestora poate produce un set de date nesortat. Totuşi, combinarea seturilor de date sortate, numită interclasare, se poate realiza similar concatenării prin adăugarea clauzei BY. 
+
+Sintaxa:
+DATA set_date_nou;                           
+       SET set_date_1 set_date_2 ...;
+       BY  listă_variabile;                           
+
+Se aplică aceleași principii ale combinării datelor ca şi la concatenare, cu specificarea faptului că înainte de interclasare observaţiile trebuie sortate anterior după variabila(le) prin clauza BY. 
+
+Exerciţiul 3:  Se consideră aceleaşi date referitoare la un parc de distracţii ca şi la Exerciţiul 1. Se cere să se combine cele două seturi de date, crescător, în funcţie de numărul tichetului de intrare. Rezultatele rulării codului de mai jos sunt prezentate în figura 2. 
+DATA intrare_sud;
+   INFILE '/home/nume.prenume/Sud.dat';
+   INPUT Intrare $ NrTichet DimGrup Varsta;
+PROC SORT DATA = intrare_sud;
+   BY NrTichet;
+RUN;
+DATA intrare_nord;
+   INFILE '/home/nume.prenume/Nord.dat';
+   INPUT Intrare $ NrTichet DimGrup Varsta Lot;
+PROC SORT DATA = intrare_nord;
+   BY NrTichet;
+RUN; 
+* Interclasarea seturilor de date;
+DATA interclasare;
+   SET intrare_sud intrare_nord;
+   BY NrTichet;
+RUN;
+PROC PRINT DATA = interclasare;
+   TITLE 'Ambele intrari in functie de numarul tichetului';
+RUN;
+
+Figura 2.  Listarea datelor interclasate
+3. Fuziune pe baza unei corespondenţe unu-la-unu
+În situaţiile în care se doreşte realizarea unei corespondenţe între observaţiile unor seturi de date, în vederea combinării acestora, se poate folosi declaraţia MERGE în secţiunea de date. Dacă se cunoaşte faptul că seturile de date sunt în exact aceeaşi ordine din punctul de vedere al entităţilor pe care le descriu, atunci nu este necesară existenţa unei variabile comune. Însă, de obicei, pentru a avea siguranţa existenţei unei corespondenţe, se urmăreşte prezenţa uneia sau mai multor variabile care să definească în mod unic fiecare observaţie. De asemenea, seturile de date de intrare trebuie să fie sortate în prealabil după variabila(le) comune. 
+
+Sintaxa:
+DATA set_date_nou;                           
+       MERGE set_date_1 set_date_2;
+       BY  listă_variabile;                           
+
+Atenţie! Dacă vor fuziona două seturi de date care au variabile cu acelaşi nume (altele decât cele din clauza BY), atunci variabilele din cel de-al doilea set de date vor suprascrie orice variabilă care are acelaşi nume în primul set de date. 
+
+Exerciţiul 4: Un producător de ciocolată păstrează o evidenţă a vânzărilor sale zilnice pentru fiecare tip de ciocolată vândut. Fişierul referitor la vânzări stochează codul produsului şi numărul de unităţi vândute într-o zi, iar un alt fişier conţine informații despre fiecare produs, în termeni de cod, denumire şi descriere. În scopul realizării unui raport privind vânzările zilnice, se cere să se realizeze o fuziune între cele doua fişiere (fişierul cu descrierea produselor este sortat după cod). 
+*Fuziunea bazata pe corespondenta unu-la-unu;
+DATA descriere;     
+   INFILE '/home/nume.prenume/Ciocolata.dat' TRUNCOVER;    
+   INPUT Cod $ 1-4 Nume $ 6-14 Descriere $ 15-60; 
+RUN;
+PROC SORT DATA = descriere;
+   BY Cod;
+RUN;
+DATA vanzari;    
+   INFILE '/home/nume.prenume/Ciocolata_Vanzari.dat';;    
+   INPUT Cod $ 1-4 UnitatiVandute 6-7; 
+PROC SORT DATA = vanzari;
+   BY Cod;
+RUN;
+*Fuziune dupa cod;
+DATA ciocolate;    
+   MERGE vanzari descriere;    
+   BY Cod;
+PROC PRINT DATA = ciocolate;   
+   TITLE "Vanzarile de ciocolata de astazi &sysdate"; 
+RUN;
+Rezultatele rulării acestui cod sunt prezentate în figura 3. 
+
+Figura 3.  Listarea raportului cu vânzările de ciocolată
+Atenţie! Observaţi că în setul de date final există o valoare lipsă pentru cea de-a şaptea observaţie. De aici putem deduce că în setul de date final sunt incluse toate înregistrările din datele de intrare, indiferent dacă acestea au sau nu corespondent. 
+
+4. Fuziune pe baza unei corespondenţe unu-la-mulţi
+Uneori este nevoie să se combine două seturi de date prin realizarea unei corespondenţe între o înregistrare a unui set de date şi mai multe înregistrări ale altuia. Sintaxa pentru acest tip de fuziune este identică cu cea întâlnită la corespondenţa unu-la-unu. Ordinea în care apar seturile de date în declaraţia MERGE nu este relevantă. Ca şi în cazul anterior, seturile de date trebuie sortate după una sau mai multe variabile comune. 
+
+Atenţie! Dacă nu se defineşte nicio variabilă în clauza BY, SAS realizează o simplă joncţiune a observaţiilor din seturile de date în funcţie de poziţia acestora în fiecare set, cu alte cuvinte are loc o fuziune unu-la-unu fără corespondenţă. 
+
+Exerciţiul 5:  Un distribuitor de încălţăminte sportivă oferă reduceri pentru toate produsele sale faţă de preţul iniţial. Compania are la dispoziţie două fişiere: unul care conţine detalii despre încălţăminte (Denumire, Sport, Pret) în setul de date SAS “Incaltaminte” şi altul cu coeficienţii de reducere pentru luna martie (Sport, Reducere) în setul de de date SAS „Inc_reducere”. Se cere să se creeze un set de date combinat din cele două care să conţină şi preţul final de vânzare rotunjit la două zecimale.  
+*Fuziunea bazata pe corespondenta unu-la-multi;
+libname ad_data "/home/nume.prenume";
+PROC SORT DATA = ad_data.Incaltaminte;
+   BY Sport;
+RUN;
+PROC SORT DATA = ad_data.Inc_reducere;
+   BY Sport;
+RUN;
+DATA Inc_preturi;
+   MERGE ad_data.Incaltaminte ad_data.Inc_reducere;
+   BY Sport;
+   Pret_Nou = ROUND(Pret - (Pret * Reducere), .01);
+PROC PRINT DATA = Inc_preturi;
+   TITLE 'Lista preturilor pentru luna martie';
+RUN;
+
+5. Fuziunea între un raport statistic agregat şi datele iniţiale
+Există situaţii în care este necesară combinarea rezultatelor unor analize statistice agregate cu datele iniţiale, spre exemplu atunci când se doreşte compararea fiecărei observaţii cu media grupului sau când vrem să calculăm un procent folosind un total de grup. În acest sens, se poate utiliza procedura MEANS pentru a agrega datele, urmată de o fuziune a rezultatelor acesteia cu datele iniţiale folosind o corespondenţă unu-la-mulţi. 
+
+Exerciţiul 6: Distribuitorul de încălţăminte sportivă de la exerciţiul 5 dispune de o situaţie a vânzărilor din ultima săptămână pentru fiecare tip de încălţăminte (setul de date SAS „inc_Vanzari” având coloanele Denumire, Sport,Vanzari). Departamentul de marketing solicită realizarea unei analize a vânzărilor din această perioadă, evidențiind, procentual, cu cât a contribuit fiecare model vândut în totalul vânzărilor din categoria sa sportivă.    
+
+*Fuziunea intre un raport statistic agregat si datele initiale;
+libname ad_data "/home/nume.prenume";
+proc SORT data=ad_data.inc_vanzari; 
+BY Sport;
+RUN;
+PROC MEANS NOPRINT DATA = ad_data.Inc_vanzari;
+   VAR Vanzari;
+   BY Sport;
+   OUTPUT OUT = date_agregate SUM(Vanzari) = Total;
+PROC PRINT DATA = date_agregate;
+   TITLE 'Setul de date agregat';
+RUN;
+* Fuziunea totalului cu datele initiale;
+DATA Inc_agregare;
+   MERGE ad_data.inc_Vanzari date_agregate;
+   BY Sport;
+   Procent = Vanzari / Total * 100;
+PROC PRINT DATA = Inc_agregare;
+   BY Sport;
+   ID Sport;
+   VAR Sport Vanzari Total Procent;
+   TITLE "Contributia in totalul vanzarilor pe categorii";
+RUN; 
+
+6. Folosirea opţiunii IN= pentru urmărirea şi selectarea observaţiilor
+Opţiunea IN= asociată unui set de date poate fi folosită pentru a urmări care din seturile de date de intrare a contribuit cu valori la fiecare observaţie din setul de date nou creat. Se utilizează cu precădere pentru a selecta observaţiile care au sau nu corespondent în cadrul unui fuziuni. 
+Opţiunea IN= se specifică după numele fiecărui set de date şi este urmată de un nume de variabilă temporară ales de utilizator (aceasta nu va fi inclusă în setul de date rezultat). Variabilele temporare definite prin IN= iau valoarea 1 (adevărat) dacă setul de date la care se referă contribuie la observaţia curentă din setul de date nou şi 0 (fals) în caz contrar. Deoarece acestea nu fac parte dintr-un set de date, se va folosi declaraţia PUT pentru a le lista. 
+ 
+Exerciţiul 7: O firmă are un număr de colaboratori care lucrează pe diferite categorii de posturi şi care sunt remuneraţi în funcţie de orele lucrate. În săptămâna 21-27 ianuarie, numai o parte dintre aceştia au lucrat. Codul de mai jos evidenţiază folosirea opţiunii IN= în cazul fuziunii seturilor de date cu informaţii despre colaboratori (Cod, Nume) şi a orelor lucrate (Cod, Categorie, Ore). 
+***** Utilizarea optiunii IN= ; 
+data colaboratori;
+	INPUT Cod Nume$;
+datalines;
+1 Irimia
+2 Popa
+4 Radu
+5 Ionita
+7 Stoicea
+;
+data ore_lucrate;
+	INPUT Cod Categorie$ Ore;
+datalines;
+1 A 37
+4 B 44
+5 A 32
+9 B 54
+;
+data nou;
+	merge colaboratori (IN=inColaboratori)
+		ore_lucrate (IN=inOre);
+		by Cod;
+	file print; 
+	/* directionează iesirea care este produsă de PUT 
+	în acelasi fisier ca iesirea care este produsă de DATA */
+	put Cod= inColaboratori= inOre= Nume= Categorie= Ore=;
+RUN;
+ 
+Exerciţiul 8: Pornind de la seturile de date de la exerciţiul anterior, să se afişeze lista colaboratorilor care au lucrat în săptămâna 21-27 ianuarie, indicând şi onorariul lor, ştiind că cei care lucrează pe poziţii din categoria A sunt platiţi cu 70 RON/oră, iar cei din categoria B cu 50 RON/oră. 
+data onorarii;
+	merge colaboratori (IN=inColaboratori)
+		ore_lucrate (IN=inOre);
+	by Cod; 
+	if inColaboratori and inOre;
+	if Categorie  eq "A" then Onorariu = 70*Ore;
+	else if Categorie eq "B" then Onorariu = 50*Ore;
+RUN; 
+title 'Onorarii datorate colaboratorilor in perioada 21-27 Ianuarie';
+Proc PRINT data=onorarii;
+RUN;
+De lucru!!!! 
+Pornind de la exemplul de precedent, prin intermediul unei proceduri de fuziune, identificaţi care colaboratori au lucrat în perioada 21-27 ianuarie, dar ale căror detalii de identificare nu se regăsesc în setul de date corespunzător. 
+Pentru aceştia, recalculaţi şi afişaţi din nou onorariile datorate colaboratorilor, ştiind că atunci cînd se depăşeşte nivelul de 40 de ore pe săptămână, orele peste acest nivel se plătesc dublu.  
+
+B. Proceduri specifice SQL
+Se pot utiliza instrucţiuni SQL în programele SAS pentru a crea, citi şi modifica seturi de date. Există două modalităţi de bază prin care se poate utiliza SQL împreună cu SAS:
+încorporarea de instrucţiuni SQL complete în procedura SQL;
+încorporarea declaraţiei WHERE pentru a selecta rânduri în secţiunile de date şi proceduri SAS. 
+Ambele variante sunt disponibile cu Base SAS şi nu necesită software adiţional. 
+Sintaxa:
+PROC SQL;                           
+       comandă _sql;
+            QUIT;                           
+De reţinut că comandă_sql poate fi orice comandă de tipul ALTER, CREATE, DELETE,
+DESCRIBE, DROP, INSERT, SELECT sau UPDATE având la sfârşit seminul “;”. Pot fi definite oricâte comenzi SQL într-o procedură SQL. Este o bună practică să se plaseze QUIT la finalul declaraţiei, nefiind însă obligatoriu.  
+
+Exerciţiul 9: O companie care comercializează aparate de aer condiţionat are filiale în diferite judeţe ale ţării. Sunt disponibile date referitoare la numărul de aparate vândute în anul anterior (cantitate) şi la agenţii comerciali pe care îi are fiecare filială. Codul SAS de mai jos exemplifică folosirea diferitelor tipuri de joncţiuni folosind procedura SQL.
+* Jonctiuni cu proceduri specifice SQL;
+Data Filiale;
+Input ID_fil Filiala$ Cantitate;
+cards;
+10 Cluj 150
+20 Iasi 170
+30 Timis 350
+40 Dolj 140
+50 Sibiu 180
+;
+run;	
+Data Personal;
+Input ID_ang Nume$ ID_fil;
+cards;
+1 Popescu 30
+2 Matei 10
+3 Avram 10
+4 Costache 10
+5 Ionescu 40
+6 Enache 40
+7 Anton 40
+8 Codreanu 
+9 Iftene 50
+;
+run;	
+*INNER JOIN;
+PROC SQL;
+Create table inner_join as
+Select * from Filiale as f, Personal as p
+where f.ID_fil = p.ID_fil;
+QUIT;
+*Cod alternativ;
+PROC SQL;
+Create table inner_join1 as
+Select * from Filiale as f inner join Personal as p
+On f.ID_fil = p.ID_fil;
+QUIT;
+*LEFT JOIN;
+PROC SQL;
+Create table left_join as
+Select * from Filiale as f left join Personal as p
+On f.ID_fil = p.ID_fil;
+QUIT; 
+*RIGHT JOIN;
+PROC SQL;
+Create table right_join as
+Select * from Filiale as f right join Personal as p
+On f.ID_fil = p.ID_fil;
+QUIT; 
+*FULL JOIN;
+PROC SQL;
+Create table full_join as
+Select * from Filiale as f full join Personal as p
+On f.ID_fil = p.ID_fil;
+QUIT;
+*Utilizarea functiei SQL COALESCE care returneaza primul argument nenul;
+proc SQL;
+select id_ang, f.id_fil, coalesce (p.ID_ang, f.ID_fil,5) as ID from Filiale as f full join personal as p on f.id_fil = p.id_fil;
+QUIT;
+
+Exerciţiul 10: Un producător de echipamente sportive doreşte să trimită un reprezentant de la vânzări pentru a contacta toţi clienţii care nu au plasat comenzi în primul trimestru al anului. Se cere: a) să se creeze, cu ajutorul procedurilor SQL, două tabele SAS conţinând datele clienţilor şi respectiv valoarea comenzilor plasate de aceştia în primul trimestru; b) un raport care listează clienţii care trebuie contactaţi.
+
+*Proceduri specifice SQL; 
+LIBNAME ad_data '/home/nume.prenume';
+PROC SQL;
+   CREATE TABLE ad_data.client
+      (CodClient num,
+       Nume          char(17),
+       Adresa        char(20));
+   INSERT INTO ad_data.client
+      VALUES (101, 'Murphy''s Sports ', '115 Main St.        ')
+      VALUES (102, 'Sun N Ski        ', '2106 Newberry Ave.  ')
+      VALUES (103, 'Sports Outfitters', '19 Cary Way         ')
+      VALUES (104, 'Cramer & Johnson ', '4106 Arlington Blvd.')
+      VALUES (105, 'Sports Savers    ', '2708 Broadway      ');
+   TITLE 'Datele despre clientii sport';
+   SELECT *
+      FROM ad_data.client;
+    CREATE TABLE ad_data.comenzi
+  	  (CodClient num,
+  	   Valoare num );
+    INSERT INTO ad_data.comenzi
+  	  VALUES ( 102, 562)
+  	  VALUES ( 104, 254)
+  	  VALUES ( 102, 1242)
+  	  VALUES ( 101, 3497)
+  	  VALUES ( 102, 385);
+  TITLE 'Datele despre comenzile clientilor sport';
+   SELECT *
+      FROM ad_data.comenzi;  
+PROC SQL;
+CREATE TABLE clienti_fara_comenzi as
+SELECT * from ad_data.Client as x left join ad_data.comenzi as y
+On x.CodClient = y.CodClient
+WHERE y.CodClient is null;
+TITLE 'Clienti sport fara comenzi in primul trimestru';
+   SELECT *
+      FROM clienti_fara_comenzi;  
+QUIT;
+
+De lucru!!!! Folosind MERGE, să se creeze un raport similar celui de la punctul b) al exerciţiului 10. Se vor folosi seturile de date permanente create în exerciţiul 10.    
+
+C. Lucrul cu masive în SAS
+
+Masivele sunt utile în SAS atunci când se doreşte repetarea aceleiaşi secvenţe de paşi pentru mai multe variabile. Un masiv reprezintă un grup ordonat de elemente similare. În SAS, acesta reprezintă un grup de variabile, toate de tip numeric sau de tip caracter. Pot fi variabile existente în setul de date cu care se lucrează sau variabile noi. 
+
+Sintaxa simplificată pentru un masiv unidimensional:
+ARRAY nume(n) $ lista_variabile;
+unde:
+nume = numele masivului;
+n = numărul de elemente;
+$ = se foloseşte în cazul în care sunt referite variabile de tip caracter, de obicei când acestea nu au fost definite;
+parantezele rotunde pot fi înlocuite cu paranteze pătrate sau acolade.
+Această sintaxă poartă denumirea de masiv explicit, în care numărul de variabile este specificat la definire. Pentru a referi o variabilă din masiv se va folosi sintaxa nume(index), indexul unui masiv începând de la 1. În practică, există o multitudine de situaţii unde masivele își pot demonstra utilitatea, două dintre acestea fiind exemplificate în continuare. 
+
+Executarea de calcule repetitive
+În această situaţie, masivele ajută la creşterea eficienţei în  programare, mai ales atunci când se lucrează cu un număr mare de variabile. 
+
+Exerciţiul 11: Se doreşte realizarea unui sondaj prin intermediul căruia să se măsoare gradul de satisfacţie al cursurilor din domeniul economic oferite de o platformă de e-learning. Respondenţii pot acorda calificative de la 1 la 5, iar în situaţia în care nu au urmat un curs sau nu doresc să acorde un calificativ, se va introduce valoarea 0. Au fost culese şi date referitoare la oraşul de reşedinţă al repondenţilor şi vârsta acestora. Se cere să se înlocuiască valoarea 0 cu valoarea lipsă pentru toate variabilele care conţin calificative.  
+*Calcule repetitive cu masive;
+DATA cursuri;
+	INFILE '/home/nume.prenume/Cursuri.txt';
+	Length Oras $9;
+	INPUT Oras$ Varsta  ECON MRKT FINA CONT STAT MATE INFO;
+ARRAY curs (7) ECON MRKT FINA CONT STAT MATE INFO;
+   DO i = 1 TO 7;
+      IF curs(i) = 0 THEN curs(i) = .;
+   END;
+RUN;
+PROC PRINT DATA = cursuri;
+   TITLE 'Sondaj cursuri economice';
+RUN;
+
+Atenţie!!! Observaţi că membrii masivului de la curs(1) la curs(7) nu vor face parte din setul de date, dar variabila “i” este inclusă în acesta. Folosiţi o opţiune potrivită pentru a o îndepărta din setul de date. 
+
+Folosirea abrevierilor pentru numele de liste de variabile
+O listă abreviată de nume de variabile poate fi plasată în orice expresie unde apare şi o listă de variabile specificate în detaliu. Ca şi parametri ai funcţiilor, listele abreviate vor fi precedate de cuvântul cheie OF, spre exemplu, SUM (OF val1-val12). Există trei tipuri de liste abreviate, și anume: 
+Liste cu valori numerice, în care variabilele încep cu aceleaşi caractere şi se termină cu numere consecutive ( INPUT Tip1- Tip8; ). 
+Listele cu domeniu denumit depind de ordinea internă, sau de poziţia, variabilelor în setul de date. Spre exemplu, lista abreviată s -- p referă variabilele care au fost definite prin declaraţia INPUT s t o p; .
+Listele cu nume speciale,  _ALL_ , _CHARACTER_ , _NUMERIC_ , pot fi plasate orinde dorim să specificăm fie toate variabilele, fie numai pe cele numerice sau de tip caracter (SUM(OF _NUMERIC_)).
+ 
+Exerciţiul 12: Se cere ca pornind de la datele de la Exerciţiul 11, să se înlocuiască toate valorile 0 cu valoarea lipsă, fără a afecta datele originale, prin crearea unor noi variabile denumite Curs1-Curs7. Totodată, se cere să se determine media punctajelor acordate de fiecare repondent. 
+*****Aplicatii cu liste abreviate si masive;
+DATA cursuri;
+	INFILE '/home/nume.prenume/Cursuri.txt';
+	Length Oras $9;
+	INPUT Oras$ Varsta  ECON MRKT FINA CONT STAT MATE INFO;
+	ARRAY nou (7) Curs1 - Curs7;
+	ARRAY vechi (7) ECON -- INFO;
+   DO i = 1 TO 7;
+      IF vechi(i) = 0 THEN nou(i) = .;
+      ELSE nou(i) =vechi(i);
+   END;
+   MedieCalif = MEAN (OF Curs1 - Curs7);
+   RUN;
+PROC PRINT DATA = cursuri;
+   TITLE 'Sondaj cursuri economice cu media calificativelor';
+RUN;
+
+Exerciţiul 13: Au fost memorate răspunsurile date de studenţi la un test. Se cere să se înlocuiască toate răspunsurile care nu corespund caracterelor a, b, c, d (litere mari sau mici) cu valoarea lipsă şi să se transforme toate valorile variabilelor de tip caracter în litere mari. 
+*Aplicatii cu nume speciale de liste SAS;
+libname ad_data "/home/nume.prenume";
+DATA raspunsuri;
+    SET ad_data.RASPUNSURI;
+    ARRAY var_caracter {*} _character_;
+    DO i = 1 TO dim (var_caracter);
+      IF var_caracter(i) NOT IN ('a' 'b' 'c' 'd' 'A' 'B' 'C' 'D') then
+      call missing(var_caracter(i));
+ 	  ELSE var_caracter(i)= upcase (var_caracter(i));
+    END;
+DROP i;
+RUN;
+PROC PRINT DATA = raspunsuri;
+   TITLE 'Raspunsurile studentilor la test';
+RUN;
+
+Atenţie!!! A fost definit un masiv fără a specifica numărul de elemente (prin semnul *) şi care conţine doar variabilele de tip caracter.  La parcurgerea masivului se foloseşte funcţia dim () pentru a determina numărul de elemente ale acestuia. Call missing reprezintă o rutină prin care se asignează o valoare lipsă oricărei variabile din lista de argumente. 
+
+Transformarea structurii seturilor de date
+Transformarea structurii seturilor de date presupune schimbarea perspectivei asupra datelor, spre exemplu atunci când dorim să creăm observații multiple din observații singulare sau viceversa. Aceste restructurări sunt utile la numărarea frecvențelor, la procesarea folosind variabile de grupare sau ca necesitate a anumitor reprezentări grafice sau analize statistice. 
+Transformarea cu ajutorul masivelor este o alternativă mai flexibilă față de folosirea procedurii SAS TRANSPOSE. Exemplele următoare ilustrează crearea unui set de date cu mai multe observații per subiect (set de date lung) dintr-un set de date cu o singură observație per subiect (set de date lat). 
+
+Exerciţiul 13: O companie dorește să întocmească un raport privind nivelurile de competență relevante ale fiecărui angajat în cunoașterea limbilor engleză (E), franceză (F), spaniolă (S) și germană (G), nivelurile de competență variind de la A la C. Se cere să se determine câți angajați cunosc cele patru limbri străine la fiecare nivel. 
+*Transformarea seturilor de date cu masive;
+DATA competente;
+INPUT ID CO1 $ CO2 $ CO3$;
+datalines;
+01 EA GA SB
+02 FA EB EB 
+03 SA GB EC
+04 EA FA GB
+05 SB EB GB
+;
+RUN;
+*varianta fara folosirea masivelor;
+DATA competente_nou;
+	SET competente;
+	CO=CO1;
+		IF not missing(CO) THEN OUTPUT;
+	CO=CO2;
+		IF not missing(CO) THEN OUTPUT;
+	CO=CO3;
+		IF not missing(CO)  THEN OUTPUT;
+	KEEP ID CO;
+RUN;
+*varianta cu folosirea masivelor;
+DATA competente_nou;
+	SET competente;
+	ARRAY COARRAY[3] CO1-CO3;
+		DO i=1 to 3;
+			CO=COARRAY[i];
+			IF not missing (CO) THEN OUTPUT;
+		END;
+	KEEP ID CO;
+RUN;
+*Determinarea numerului de cunoscatori de limbi straine per nivel;
+Title "Numarul de angajati pentru fiecare nivel de competenta in limbile straine";
+PROC FREQ DATA=competente_nou;
+	TABLES CO /NOCUM;
+RUN;
+
+Exerciţiul 14: De-a lungul anului 2018 trei echipe de voluntari au participat la plantarea de puieți într-o pepinieră, în patru etape. Se cunoaște numărul de puieți platați de fiecare echipă în fiecare etapă. Se cere să se determine numărul mediu de puieți plantați în 2018 de către fiecare echipă și să realizeze un raport al plantărilor de puieți în anul 2018, per echipă și per total . 
+DATA echipe;
+INFILE '/home/nume.prenume/Echipe.txt';
+	INPUT CODE $ A1 A2 A3 A4;
+	Medie = MEAN (of A1 - A4);
+RUN;
+
+DATA echipe_timp;
+	SET echipe;
+	ARRAY A [4];
+	DO timp = 1 TO 4;
+		Puieti = A[timp];
+		OUTPUT;
+	END;
+	KEEP CODE timp puieti;
+RUN;
+
+Title "Plantarile de puieti in anul 2018 per echipa si per total";
+PROC PRINT DATA = echipe_timp noobs
+	 sumlabel='Total #byval(CODE) ' grandtotal_label='Total General';
+	BY CODE;
+ 	SUM puieti;
+ 	VAR timp puieti;
+ RUN; 
+
+
+Probleme propuse
+În fişierul text sondaj.txt, valorile lipsă pentru variabilele numerice au fost înlocuite cu valoarea 999 (o practică des întâlnită în pachetele statistice cum ar fi SPSS). Se cere să se înlocuiască valoarea 999 cu “ .“, în două variante, folosind stucturi SAS alternative şi respectiv masive. Fişierul sondaj.txt conţine observaţii referitoare la înălţimea, greutatea şi vârsta, toate numerice. Datele sunt separate prin spaţiu. 
+Se dorește crearea a două seturi de date cu următorul conținut (fie prin import, fie prin specificarea datelor în cadrul programului SAS):
+3 C
+1 A 
+7 E
+și 
+2 B
+5 E
+4 D
+6 F
+8 H.
+Se cere să se creeze un fișier compus care conține datele în ordine alfabetică. 
+Un grup de studenți și-a propus să întocmească un plan pentru cărțile citite în decursul unui an,  stabilind ținte pentru cărțile din domeniile beletristică și științe. În seturile de date „tinta” și „citit”, create cu prin codul sursă de mai jos, au fost memorate datele privind planurile studenților, respectiv ceea ce au reușit să citească în acel an.  
+Se cere să se realizeze un raport similar celui din figura 4. 
+
+
+
+
+
+
+
+--- TABLES IN DOCUMENT ---
+--- Table 1 ---
+data tinta;
+INPUT ID Nume $ tinta_Bel tinta_Sti;
+datalines;
+1 Andrei  10 3 
+2 Mircea  25 2
+3 Iulia   20 4
+4 Daniela 30 2 
+5 Mihai   15 5
+;
+data citit;
+INPUT ID citit_Bel citit_Sti;
+datalines;
+1 9 4
+2 18 2
+4 22 0
+5 12 4 
+6 16 3
+; ||  |  |  |  |  |  | Figura 4.  Raportul cărților citite de studenți | 
+--- End of Table ---
+--- END OF DOCUMENT: Seminar programare SAS 3_f.docx ---
+
+
+--- START OF DOCUMENT: Seminar programare SAS 4.docx ---
+Seminar 4 Programare SAS
+
+Prelucrarea datelor prin crearea de rapoarte şi aplicarea de analize statistice
+
+
+1. Procedura PRINT  - realizarea de rapoarte detaliate
+Procedura PRINT este probabil cea mai utilizată procedură SAS, fiind folosită pentru afișarea datelor cu sau fără grupare. În forma sa cea mai simplă, procedura listează toate variabilele și toate observațiile dintr-un set de date. 
+
+Sintaxa:
+PROC PRINT DATA = set_date NOOBS LABEL; 
+NOOBS suprimă afișarea  numărului observației.
+LABEL  afișează eticheta, în loc de numele variabilei.
+O serie de declarații opționale sunt utile la creare de raporte de detaliu:
+BY lista_variabile; Declarația BY inițiază în rezultate o nouă secțiune pentru fiecare valoare nouă a variabilelor de grupare și scrie valorile variabilelor de grupare în partea de sus a fiecărei secțiuni. Datele trebuie să fie sortate în prealabil după variabilele de grupare.
+ID lista_variabile; Când se utilizează declarația ID, numerele observațiilor nu vor fi afișate. În schimb, variabilele din lista_variabile vor apărea în partea stângă a paginii.
+SUM lista_variabile; Declarația afișează sume ale valorilor variabilelor din listă.
+VAR lista_variabile; Specifică variabilele afișate și ordinea acestora.
+
+Exerciţiul 1:  Pentru a-și suplimenta fondurile destinate unei excursii școlare, elevii claselor a III-a A și a III-a B au decis să participe la câteva evenimente din cadrul unei campanii de încurajare a cititului în rândurile copiilor, prin vânzarea de semne de carte cu mesaje motivaționale create de ei. Copiii au câștigat câte 3 lei pentru un semn de carte pe suport de hârtie sau textil. În fișierul „micii_cititori.txt” au fost stocate date referitoare la elevul care a participat la eveniment, tipul semnelor de carte vândute și cantitatea. Se cere să se realizeze un raport privind sumele cu care a contribuit fiecare elev, totalul pe fiecare clasă și totalul general.  
+DATA cititori;
+	INFILE "/home/nume.prenume/micii_cititori.txt";
+	INPUT Nume $ Clasa $ DataParticipare MMDDYY10. Suport $ Cantitate;
+	Castig= Cantitate*3;
+RUN;
+PROC SORT DATA=cititori;
+	BY Clasa;
+PROC PRINT DATA=cititori;
+	BY Clasa;
+	SUM Castig;
+	TITLE 'Fondurile stranse de fiecare clasa';
+RUN;
+De lucru!!!! Modificați codul SAS de mai sus pentru a personaliza raportul obținut astfel încât pentru câștigul fiecărei clase și per total să se precizeze etichete. Adăugați codul:
+sumlabel='Total #byval(Clasa)' grandtotal_label='Total' ca opțiune a procedurii PRINT, după numele setului de date care se afișează. Formatați data de participare folosind formatul SAS DATE9.. 
+
+2. Procedura UNIVARIATE – generarea de statistici descriptive
+	Procedura UNIVARIATE, parte a BASE SAS, este folosită în principal pentru examinarea distribuției datelor pentru o singură variabilă, incluzând o evaluarea a normalității datelor și identificarea valorilor extreme. Pe lângă calcularea unor indicatori statistici de bază (care se vor regăsi și în procedra MEANS), UNIVARIATE poate include și reprezentări grafice necesare pentru a analiza datele.  
+Sintaxa simplificată:
+PROC UNIVARIATE <optiuni>;                           
+       VAR listă_variabile; 
+       BY  listă_variabile;     
+       ID variabilă;
+       HISTOGRAM  < listă_variabile>;             
+Fără declarația VAR, procedura va genera statistici pentru toate variabilele numerice ale setului de date. Trei opțiuni uzuale care se pot specifica împreună cu declarația procedurii sunt: DATA, NORMAL, FREQ și PLOT. Prin opțiunea NORMAL sunt realizate teste de normalitate, FREQ generează tabele de frecvență ale variabilelor, iar PLOT produce trei tipuri de grafice: diagrama ramură-frunză (stem-leaf), diagrama box plot și diagrama distribuției normale. Se poate folosi declarația BY pentru a obține analize separate pe grupe de valori. Declarația ID denumește variabila care identifică observațiile în locul numărului observației, iar HISTOGRAM construiește un grafic de tip histogramă.  
+
+Exerciţiul 2:  Se consideră datele referitoare la notele obținute de o grupă de studenți la un test (fișierul “note.txt”). Din rezultatele afișate prin aplicarea procedurii UNIVARIATE se cere să se determine media notelor studenților, dacă au existat valori în afara intervalului 0-100 și care este, cu aproximație, punctajul în jurul căruia se concentrează majoritatea notelor studenților.  
+*Statistici descriptive cu UNIVARIATE;
+DATA note;
+	INFILE "/home/nume.prenume/note.txt";
+	INPUT Punctaj @@;
+RUN;
+PROC UNIVARIATE DATA=note PLOT;
+VAR Punctaj;
+TITLE;
+RUN;
+Identificarea valorilor extreme
+Implicit, procedura afișează cinci dintre valorile cele mai mici și mai mari ale variabilei analizate și numărul observației care are aceste valori extreme. Se poate utiliza opțiunea NEXTROBS= pentru a afișa un alt număr de valori extreme. Pentru a afișa cele mai mici și mai mari valori distincte, se va utiliza opțiunea NEXTRVAL= , iar pentru a suprima afișarea tabelei cu observațiile extreme, opțiunea NEXTROBS=0.
+
+Exerciţiul 3:  Fișierul “amenzi.txt” conține numărul de amenzi date pentru depășirea vitezei în fiecare stat din SUA. Se cere:
+să se analizeze aceste date și să se identifice valorile extreme ale numărului de amenzi cu evidențierea codului statului în loc de numărul înregistrării;
+să se reprezinte grafic o histogramă a numărului de amenzi;
+să se identifice cele mai mici și cele mai mari cinci valori extreme distincte pentru variabila numerică.
+
+*Valori extreme si histograma cu UNIVARIATE;
+LIBNAME sem4 "/home/nume.prenume";
+*punctul a);
+PROC UNIVARIATE DATA=sem4.amenzi_viteza;
+	VAR Amenzi;
+	ID Stat;
+	Title "Indicatori statistici pentru amenzile de viteza";
+RUN;
+*punctul b);
+PROC UNIVARIATE DATA=sem4.amenzi_viteza noprint; *nu fiseaza tabelele de iesire;
+	VAR Amenzi;
+	HISTOGRAM Amenzi;
+	Title "Histograma pentru amenzile de viteza";
+RUN;
+*punctul c);
+PROC UNIVARIATE DATA=sem4.amenzi_viteza NEXTRVAL=5 NEXTROBS=0;
+	VAR Amenzi;
+	ID Stat;
+	Title "Indicatori statistici cu valori limita distincte pentru amenzile de viteza";
+RUN;
+
+3. Procedura MEANS – crearea de rapoarte agregate
+Procedura MEANS are rolul de a crea rapoarte agregate prin generarea de diferiți indicatori statistici pentru variabilele de tip numeric. De asemenea, poate fi folosită pentru a crea seturi de date agregate care pot fi ulterior analizate cu ajutorul altor secțiuni de date sau proceduri. 
+
+Sintaxa:
+PROC MEANS indicatori;                           
+unde indicatori reprezintă tipuri de indicatori statistici. Exemple de indicatori care pot fi utilizați:
+MAX – valoarea maximă
+MIN – valoarea minimă
+MEAN – media
+N – numărul de valori nenule
+NMISS – numărul de valori lipsă
+SUM – suma
+Se pot adăuga următoarele declarații opționale:
+BY lista_variabile – realizează analize separate pentru fiecare nivel al variabilelor din listă.  Datele trebuie să fie în prealabil sortate în aceeași ordine în care apar variabilele din lista_variabile.
+CLASS lista_variabile – realizează tot analize separate pentru fiecare nivel al variabilelor, însă rezultatele sunt prezentate mai compact față de declarația BY, iar datele nu trebuie sortate. 
+VAR lista_variabile – specifică variabile analizate.
+
+Exerciţiul 4: Un distribuitor de bulbi de flori dorește să realizeze un raport agregat al vânzărilor din fiecare lună. Setul de date SAS “flori” conține codul clientului, data vânzării și bulbii de lalele, gladiole și zambile vânduți.
+libname ad_data "/home/nume.prenume";
+DATA vanzari;    
+   SET ad_data.flori;
+   Luna = MONTH(DataVanzare); 
+PROC SORT DATA =vanzari;    
+   BY Luna; 
+* Calculeaza media vanzarilor lunare de bulbi de flori;
+PROC MEANS DATA = vanzari;    
+   BY Luna;    
+   VAR Lalele Gladiole Zambile;
+   TITLE 'Raportul vanzarilor lunare de bulbi de flori';
+RUN;
+Scrierea statisticilor agregate într-un set de date
+Uneori este necesară salvarea statisticilor agregate într-un set de date pentru analize ulterioare sau pentru combinarea cu alte date. 
+Sintaxa:
+OUTPUT OUT = set-date lista-statistici-iesire;                           
+unde: 
+set-date este setul de date care va conține rezultatele;
+lista-statistici-iesire conține indicatorii statistici care se vor calcula și numele variabilelor asociate cu aceștia.
+Un format posibil pentru această listă de ieșire este:
+	statistica (lista_variabile) = lista_nume
+statistica = unul dintre indicatorii statistici disponibili cu procedura MEANS;
+lista_variabile = pentru ce variabile se vor calcula indicatorii;
+lista_nume = noile nume de variabile asociate indicatorilor statistici.
+Prin folosirea opțiunii NOPRINT rezultatele nu se vor mai afișa pe ecran, ci vor fi direcționate doar către setul de date de ieșire. 
+
+Exerciţiul 5:  Se dorește agregarea datelor de la exercițiul 4, astfel încât să avem o singură observație pentru fiecare client, care să conțină suma, media și numărul de bulbi cumpărați de acesta. 
+*Scrierea statisticilor agregate intr-un set de date;
+DATA vanzari1;    
+    SET ad_data.flori;
+PROC SORT DATA = vanzari1;
+   BY IDClient;
+PROC MEANS NOPRINT DATA = vanzari1;
+   BY IDClient;
+   VAR Lalele Gladiole Zambile;
+   OUTPUT OUT = totaluri  MEAN(Lalele Gladiole Zambile) =
+          MedieLalele MedieGladiole MedieZambile
+      SUM(Lalele Gladiole Zambile) = Lalele Gladiole Zambile;
+PROC PRINT DATA = totaluri;
+   TITLE 'Raport privind bulbii de flori vanduti fiecarui client';
+   FORMAT MedieLalele MedieGladiole MedieZambile 3.;
+RUN;
+
+Intervale de încredere
+Dacă nu se specifică nicio opțiune, procedura MEANS va calcula media, numărul de valori nenule, abaterea standard, valoarea minimă și maximă a fiecărei variabile numerice. Prin adăugarea oricărui indicator, procedura nu va mai calcula indicatorii impliciți, aceștia trebuind adăugați.  
+Intervalul de încredere implicit pentru calculul mediei este acela al nivelului de semnificație 0.05, adică 95%. Dacă se dorește specificarea unui alt interval de încredere, acest lucru trebuie realizat folosind opțiunea ALPHA împreună cu indicatorul CLM (limitele intervalului de încredere). 
+
+Exerciţiul 6:  O tânără scriitoare aspirantă de cărți pentru copii dorește să realizeze un studiu în vederea publicării unei cărți ilustrate de povești. Fiind interesată în special de numărul de pagini pe care ar trebui să îl aibă o astfel de carte, tânăra vizitează o librărie și numără paginile unei selecții aleatore de cărți similare. Folosind datele stocate în fișierul “carti.txt”, realizați un raport care să îi fie folositor scriitoarei în luarea deciziei. 
+*Intervale de incredere pentru medie;
+DATA PaginiCarte;
+INFILE "/home/nume.prenume/carti.txt";
+INPUT NrPagini @@;
+RUN;
+PROC MEANS DATA=PaginiCarte N MEAN MEDIAN CLM ALPHA=.10;
+	TITLE "Raport privind numarul de pagini al cartilor ilustrate";
+RUN;
+De lucru!!!! Interpretați rezultatele obținute!
+
+4. Procedura FREQ – calcularea distribuției de frecvențe
+Scopul principal al procedurii FREQ (parte a BASE SAS) este acela de a crea tabele care arată distribuția valorilor datelor categorice, dar totodată poate identifica și nereguli în date. 
+ 
+Sintaxa:
+PROC FREQ DATA = date_intrare <optiuni>;
+TABLES combinatii_variabile <optiuni>;
+Declarația TABLES este cea care definește variabilele pentru care se creează tabele de frecvențe. Pentru tabelele de frecvențe unidimensionle, se specifică numele variabilei, iar pentru tabele de frecvențe unidimensionale se scrie o expresie de tipul var1 * var2 *... * varn.
+Următoarele reprezintă opțiuni care controlează modul de afișare:
+LIST – afișează tabelele multidimensionale în format listă, nu tabelar;
+MISSING – include valorile lipsă în statistici;
+NOCOL – suprimă afișarea procentelor coloanelor în tabelele de frecvență;
+NOROW – suprimă afișarea procentelor rândurilor în tabelele de frecvență;
+NOCUM – suprimă afișarea frecvențelor și procentelor cumulate în tabelele unidmensionale;
+NOPERCENT – suprimă afișarea tuturor procentelor în tabelele de frecvențe.
+OUT = set_date – scrie un set de date care conține frecvențele.
+
+Exerciţiul 7:  Un proprietar al unei cafenele ține o evidență a vânzărilor sale și înregistrează fiecare tip de cafea vândută (cappuccino, frappe, espresso și latte macchiatto), împreună cu locația unde a avut loc vânzarea: în interiorul magazinului (-i-) sau la fereastra expres pentru  vânzare rapidă (-x-). Se cere să se realizeze un raport privind numărul de cafele vândute în cele două puncte de vânzare per total și pe fiecare tip de cafea. 
+PROC FORMAT;
+value $zona 
+	'i' = 'interior'
+	'x' = 'exterior';
+RUN; 
+DATA comenzi;
+INPUT cafea $ zona $ @@;
+DATALINES;
+esp i cap x cap i fra i lat i fra x esp x fra i lat x esp x
+cap i esp x cap x fra x .   x fra i esp x cap i lat i fra i
+fra i fra i lat x esp x fra i esp x esp i fra i cap i fra i
+;
+RUN;
+Title "Tabele de frecventa pentru zona si zona/cafea";
+PROC freq DATA=comenzi;
+ format zona $zona.;
+TABLES zona zona*cafea;
+RUN;
+
+Exerciţiul 8:  O companie aeriană dorește să facă o analiză a salariilor anuale exprimate în dolari ale angajaților săi și să determine câte dintre salarii se găsesc în următoarele intervale de valori, per total companie și pentru fiecare departament: a) mai mic decât 40.000 (mic); b) între 40.000 și 60.000 (mediu); c) între 60.000 și 100.000 (mare); d) peste 100.000 (executiv). Datele se găsesc în setul de date SAS “angajati”.
+*Determinarea frecventelor datelor grupate;
+LIBNAME sem4 "/home/nume.prenume";
+PROC FORMAT;
+value nivel low-<40000='Mic'
+40000-<60000='Mediu'
+60000-100000='Mare'
+other = 'Executiv';
+RUN;
+PROC FREQ DATA=sem4.angajati ;
+	TABLES Salariu /nocum ;
+	FORMAT Salariu nivel.;
+TITLE "Raport privind nivelul salariului anual";
+RUN;
+PROC FREQ DATA=sem4.angajati;
+	TABLES Departament * Salariu/ nocol norow nopercent;
+	FORMAT Salariu nivel.;
+TITLE "Raport privind nivelul salariului anual pe departament";
+RUN;
+
+5. Procedurile GCHART și GPLOT – realizarea de grafice
+Pentru realizarea de grafice cu opțiuni mai avansate în SAS este necesar modulul SAS/GRAPH. Și BASE SAS permite construirea de grafice (prin procedurile CHART și PLOT), însă acestea au doar opțiuni de bază în ceea ce privește modul de prezentare.  Afișarea graficelor este controlată prin opțiuni grafice globale precum GOPTIONS, SYMBOL sau PATTERN, al căror efect rămâne valabil între prelucrări și care sunt aditive (spre exemplu, dacă setăm două elemente grafice și, ulterior, modificăm unul dintre ele, celălalt element rămâne valabil). 
+ 
+Sintaxa:
+PROC GCHART DATA = set_date;
+      HBAR | HBAR3D | VBAR | VBAR3D lista_var_grafic / <optiuni>;
+      PIE | PIE3D | DONUT lista_var_grafic / <optiuni>;
+      STAR lista_var_grafic / <optiuni>;
+Declarațiile care urmează după numele procedurii definesc tipul de grafic construit, astfel:
+HBAR – Grafic cu bare orizontale
+HBAR3D – Grafic cu bare orizontale 3D
+VBAR – Grafic cu bare verticale 
+VBAR3D – Grafic cu bare verticale 3D
+PIE – Grafic de tip Pie
+PIE3D – Grafic de tip Pie 3D
+DONUT – Grafic de tip inel
+STAR – Grafic de tip stea
+Exerciţiul 9:  Un distribuitor de biciclete a înregistrat vânzările sale (exprimate în mii de dolari) pentru diferite tipuri de biciclete în patru țări. Folosind datele cuprinse în setul de date “Biciclete”, se cere să se realizeze două grafice verticale care arată frecvențele pentru țară și model. 
+LIBNAME ad_data "/home/nume.prenume";
+TITLE 'Distributia vanzarilor in functie de tara si model';
+GOPTIONS  reset=all;
+* grafic cu bare pentru variabile discrete;
+PROC GCHART data=ad_data.biciclete;
+	VBAR Model Tara;
+RUN;
+QUIT;
+De lucru!!!! Să se modifica programul anterior pentru a realiza un grafic de tip pie care arată frecvențele pentru modelul de bicicletă.
+
+Exerciţiul 10:  Folosind setul de date “Biciclete”, să se creeze un grafic cu bare verticale pentru VanzarileTotale. Se vor adăuga opțiuni prin care se specifică limitele valorilor numerice reprezentate și punctele centrale pentru barele graficului. Folosiți pentru punctele centrale limitele de la 0 la 12.000, cu interval de 2.000. 
+* grafic cu bare pentru variabile continue;
+TITLE "Distributia vanzarilor totale";
+PATTERN value=solid;
+PROC GCHART data=ad_data.biciclete;
+	vbar VanzariTotale / midpoints= 0 to 12000 by 2000;
+RUN;
+QUIT;
+	Procedura GCHART permite crearea unor grafice în care înălțimea unei bare reprezintă anumiți indicatori statistici precum media sau suma, pentru fiecare variabilă de clasificare. Se pot folosi următoarele opțiuni:
+SUMVAR – arată variabilele pentru care se calculează indicatorul statistic;
+TYPE – tipul de indicator statistic.
+
+Exerciţiul 11:  Folosind setul de date “Biciclete”, să se creeze un grafic cu bare verticale pentru VanzarileTotale pentru fiecare țară.
+* grafic cu bare care reprezinta sume;
+TITLE "Suma vanzarilor totale pe tara";
+PATTERN value=L1;
+*definirea unei axe cu valori ordonate;
+AXIS1 order =("Franta" "Italia" "SUA" "Marea Britanie"); 
+PROC GCHART data=ad_data.biciclete;
+VBAR Tara / sumvar=VanzariTotale
+			type=sum
+			maxis=axis1;
+RUN;
+QUIT;
+Există două modalități prin care se pot adăuga noi variabile pe una din axele unui grafic și anume prin intermediul opțiunilor GROUP= și SUBGROUP=. Opțiunea GROUP grupează datele în funcție de valorile variabilei de clasificare pe care o referă, în timp ce opțiunea SUBGROUP folosește șabloane diferite în cadrul fiecărei coloane pentru a reprezenta valorile variabilei adăugate. 
+
+Exerciţiul 12:  Folosind datele cuprinse în setul de date “Biciclete”, să se creeze un grafic cu bare verticale care arată frecvența distribuției pentru țară și, în cadrul fiecărei coloane, distribuția pentru model. 
+*grafic cu a doua variabila ca subgrup;
+TITLE "Distribuita vanzarilor in functie tara și de model";
+PATTERN value = solid;
+PROC GCHART data=ad_data.Biciclete;
+VBAR Tara / subgroup=Model;
+RUN;
+QUIT;
+
+Pentru a construi un grafic care arată legătura între două variabile (cunoscut sub denumirea de diagramă de corelație – scatter plot) se poate folosi procedura GPLOT. 
+
+Sintaxa:
+PROC GPLOT DATA = set_date;
+PLOT variabila_Y  * variabila_X / <optiuni>;
+Declarația PLOT specifică cele două variabile care se reprezintă pe axele graficului. Prin declarația SYMBOL se pot adăuga anumite simboluri care să reprezinte intersecția valorilor variabilelor și se pot conecta punctele prin linii drepte sau curbe. Opțiunea INTERPOL= (prescurtat I=) ajută la conectarea punctelor și poate lua valori precum join (unește cu linii drepte) sau sm (unește prin linie continuă), în timp ce opțiunea WIDTH= controlează lățimea liniei. 
+
+Exerciţiul 13: Setul de date SAS “Actiuni” conține prețul unei acțiuni cotate la bursă în fiecare zi din luna ianuarie. Se cere să se reprezinte grafic evoluția în timp a prețului acțiunii folosind diferite opțiuni ale procedurii GPLOT. 
+*grafice care arata corelatia intre variabile;
+*diagrama de corelatie standard;
+TITLE "Evolutia in timp a pretului actiunii- Grafic standard";
+ PROC GPLOT data=ad_data.actiuni;
+ 	PLOT DATA * Pret;
+RUN;
+QUIT;
+*diagrama de corelatie cu puncte;
+SYMBOL value=dot;
+TITLE "Evolutia in timp a pretului actiunii- Grafic cu puncte";
+PROC GPLOT data=ad_data.actiuni;
+ 	PLOT Data * Pret;
+RUN;
+QUIT;
+*diagrama de corelatie cu linie continua;
+SYMBOL value=dot i=sm;
+TITLE "Evolutia in timp a pretului actiunii- Grafic cu linie continua";
+PROC GPLOT data=ad_data.actiuni;
+ 	PLOT Data * Pret;
+RUN;
+QUIT;
+
+6. Procedura CORR – analiza de corelație
+Procedura CORR, inclusă în BASE SAS, are rolul de a calcula corelații între două variabile, prin intermediul coeficienților de corelație. 
+
+Sintaxa:
+PROC CORR DATA = set_date;
+VAR lista_variabile;
+WITH lista_variabile;
+Fără declarațiile VAR și WITH, procedura calculează corelații între toate variabilele numerice care se găsesc în setul de date SAS cel mai recent utilizat. Variabilele specificate în declarația VAR vor apărea în partea de sus a tabelului de corelație, iar cele din declarația WITH în stânga tabelului. Implicit, procedura CORR calculează coeficientul de corelație al lui Pearson. Se pot adăuga opțiuni prin care se pot calcula alți coeficienți, precum SPEARMAN sau KENDALL. 
+
+Exerciţiul 14: Studenții dintr-o grupă au susținut un test practic la o disciplină de programare și au notat rezultatul obținut la test, precum și numărul de ore, din săptămâna anterioară testului, în care au urmărit producții TV, împreună cu orele în care au exersat pentru test. Se cere să se evalueze influența orelor petrecute la televizor și a celor în care au exersat asupra notei obținute. 
+*Analiza de corelatie;
+DATA grupa_studenti;
+    INPUT Punctaj Televiziune Exercitii @@;
+DATALINES;
+56 6 2   78 7 4   84 5 5   73 4 0   90 3 4
+44 9 0   76 5 1   87 3 3   92 2 7   75 8 3
+85 1 6   67 4 2   90 5 5   84 6 5   74 5 2
+64 4 1   73 0 5   78 5 2   69 6 1   56 7 1
+87 8 4   73 8 3  100 0 6   54 8 0   81 5 4
+78 5 2   69 4 1   64 7 1   73 7 3   65 6 2
+;
+RUN;
+PROC CORR DATA = grupa_studenti;
+   VAR Televiziune Exercitii;
+   WITH Punctaj;
+   TITLE 'Corelatie intre punctajul la test';
+   TITLE2 'Si orele petrecute la televizor sau exarsand';
+RUN;
+
+7. Procedura REG – analiza de regresie
+Procedura REG (parte a modulului SAS/STAT) este potrivită pentru a realiza modele de regresie liniară. 
+
+Sintaxa:
+PROC REG DATA = set_date;
+MODEL dependenta = independenta;
+PLOT dependenta *  independenta;
+În declarația MODEL, variabila dependentă este plasată în stânga semnului “=”, iar variabila(le) independente în partea dreaptă. Declarația PLOT este una dintre multele opțiuni ale procedurii prin intermediul acesteia realizându-se diferite diagrame de corelație. 
+
+Exerciţiul 15: Un comerciant dorește să prognozeze vânzările de băuturi răcoritoare în unul din punctele sale de vânzare. Pentru aceasta a notat vânzările din primele douăzeci și cinci de zile ale lunii iunie, precum și temperaturile înregistrate în aceste zile. Se cere să se determine dacă există corelație semnificativă între vânzările de răcoritoare și temperatură și să se estimeze vâzările din ziua de 26 iunie, dacă temparatura prognozată este de 32 grade. Datele să găsesc în fișierul “racoritoate.txt”.
+*Analiza de regresie;
+DATA racoritoare;
+	INFILE "/home/nume.prenume/racoritoare.txt";
+	INPUT Data: MMDDYY. Vanzari Temperatura;
+RUN;
+PROC PRINT data=racoritoare;
+	FORMAT data DDMMYY.;
+RUN; 
+PROC CORR  data=racoritoare;
+	VAR Temperatura;
+	WITH Vanzari;
+	TITLE "Corelatia intre vanzarile de racoritoare";
+RUN;
+PROC REG data=racoritoare;
+	MODEL Vanzari=Temperatura;
+	PLOT Vanzari*Temperatura;
+	TITLE "Rezultatele analizei de regresie";
+RUN;
+ 
+8. Procedura ANOVA – analiza dispersională
+ANOVA (parte a SAS/STAT) este una dintre procedurile disponibile în SAS pentru efectuarea de analize dispersionale. Procedura este special proiectată pentru a lucra cu date echilibrate, unde există același număr de observații pentru fiecare variabilă de clasificare. 
+Sintaxa:
+PROC ANOVA DATA = set_date;
+CLASS listă_variabile;
+MODEL dependenta = explicative;
+MEANS explicative /optiuni;
+Declarația CLASS trebuie scrisă înainte de MODEL și definește variabila(le) de clasificare. Declarația MODEL definește variabila dependentă și variabilele explicative. MEANS calculează media variabilei dependente pentru oricare din variabilele explicative speficate în MODEL. Se pot efectua mai multe tipuri de teste de comparație pentru medii, precum SCHEFFE sau testul t al lui Bonferroni (BON).
+
+Exerciţiul 16: Pornind de la datele de la exercițiul 15, comerciantul intenționează să afle dacă vânzările de băuturi răcoritoare din acea locație (L1) diferă semnificativ față de vânzările înregistrate în aceeași perioadă în alte două locații pe care acesta le deține (L2 și L3). Se va folosi fișierul “locatii.txt” ce conține două coloane care memorează vânzările și locația. 
+*Analiza dispersionala;
+DATA locatii;
+	INFILE "/home/nume.prenume/locatii.txt";
+	INPUT Vanzari Locatie$;
+RUN; 
+PROC ANOVA DATA=locatii;
+	CLASS Locatie;
+	MODEL Vanzari = Locatie;
+	MEANS Locatie / SCHEFFE;
+	TITLE "Vanzarile de racoritoare in cele trei locatii";
+RUN;
+
+Probleme propuse
+
+Un număr de 25 de studenți din diferite centre universitare au participat la strângerea de fonduri pentru un eveniment caritabil. În fișierul text “caritabil.txt” au fost salvate, în ordine, date referitoare la centrul universitar din care provine studentul (BUC – Bucuresti, IAS – Iasi, TIM – Timisoara, CLU - Cluj), profilul facultății urmate (ECON – economic, TEHN – tehnic. UMAN - Umanist), genul studentului (M sau F), precum și anul de studiu (1-3). 
+Se cere să se creeze tabele de frecvențe bidimensionale pentru perechile: Centru-Profil, Centru-Gen, An-Profil și An-Gen. Se va folosi procedura FREQ cu o declarație de tipul TABLES (A B) * (C D). Se asemenea, se cere să se afișeze forma detaliată a valorilor pentru denumirile centrelor universitare și ale profilurilor. 
+
+Folosind datele din setul de date SAS “Angajati”, să se creeze un grafic cu bare verticale care să arate salariul mediu anual pe fiecare departament.
+
+Într-un campionat de bachet între școli evoluează cinci echipe de fete. Se cere să se determine dacă există diferențe semnificative în ceea ce privește înalțimea jucătoarelor celor cinci echipe, dorindu-se, ca la acest nivel, să existe echitate între echipele înscrise în campionat. Se vor folosi datele din setul de date SAS “echipe”.
+
+--- END OF DOCUMENT: Seminar programare SAS 4.docx ---
+
+
+--- START OF DOCUMENT: Seminar programare SAS 2 2018.docx ---
+Seminar 2 Programare SAS
+Procesare iterativă şi condiţională. Combinarea seturilor de date. 
+Crearea de subseturi. Funcţii SAS.
+
+1. Operatori în SAS
+
+Operatori de comparaţie
+SAS permite utilizarea operatorilor de comparaţie cunoscuţi, într-o formă specifică. În tabelul de mai jos putem observa sintaxa SAS pentru fiecare operator.
+ 
+
+Operatorul IN (lista-valori)
+Putem folosi acest operator ca alternativă la scrierea a multiple condiţii 	legate prin OR.
+In cadrul listei definite cu IN putem folosi atât valori numerice cât şi caractere, ele fiind separate prin virgulă sau spaţiu.
+Exemplu. :  	Nota IN ( ‘A’ ‘B-’ ‘B+’ ‘C’)
+         		Nota IN ( ‘A’ ,‘B-’,‘B+’,‘C’)
+       	Nota IN ( 10 9 8 7)
+       		Nota IN ( 10,9,8,7)
+Valoare IN (10,15,20:30)	
+
+Operatorii logici AND, OR, NOT 
+Aceştia sunt utilizaţi în diferite combinaţii pentru a forma expresii complexe. În expresii, în lipsa parantezelor, operaţiile sunt executate in ordinea precedenţei lor, astfel:
+NOT
+AND
+OR
+De exemplu:
+if X and Y or Z;   
+este echivalentă cu   
+if (X and Y) or Z;
+
+Pentru ca operatorul OR să aibă precedenţă înaintea lui AND trebuie utilizate paranteze, astfel:
+if X and (Y or Z);
+
+if X and not y or z;
+este echivalentă cu   
+if (X and (not y)) or z;
+
+2. Instrucţiunea WHERE
+Dacă se citesc date dintr-un set de date SAS, se poate utiliza instrucţiunea WHERE pentru crearea unui subset de date. De asemenea, se poate utiliza această instrucţiune în cadrul unei proceduri SAS, pentru a crea subseturi ale datelor procesate. Crearea de subseturi poate fi realizată şi cu instrucţiunea IF, dar WHERE oferă o serie de avantaje cum ar fi un număr mai mare de operatori ce pot fi folosiţi, precum şi posibilitatea ca utilizarea acestei instrucţiuni să fie mai eficientă atunci când se lucrează cu un set de date de intrare indexat. De asemenea, instrucţiunea IF nu este permisă în cadrul unei proceduri SAS. 
+
+Operatori ce pot fi utilizaţi împreună cu instrucţiunea WHERE
+
+Exerciţiul 1.  Am colectat o serie de date cu privire la studenţi pe baza următoarelor variabile: 
+vârsta,
+sex (M sau F)
+proiect (nota la proiect)
+activitate (nota pentru activitatea de seminar)
+examen (nota la examenul final)
+Pentru fişierul de date:
+
+21 M 8 9 8
+. F 9 9 9
+35 M 8 8 8
+48 F . . 7
+59 F 9 7 9
+15 M 8 . 9
+67 F 9 8 9
+. M 6 7 6
+35 F 7 7 8
+49 M 5 5 8
+
+Să se creeze un set de date temporar numit Studenti
+data Studenti;
+length Sex $ 1;
+input Varsta Sex Proiect Activitate Examen;
+datalines;
+21 M 8 9 8
+. F 9 9 9
+35 M 8 8 8
+48 F . . 7
+59 F 9 7 9
+15 M 8 . 9
+67 F 9 8 9
+. M 6 7 6
+35 F 7 7 8
+49 M 5 5 8 
+;
+title "Date studenti";
+proc print data=Studenti noobs;
+run;
+
+Exerciţiul 2. Să se afişeze din setul de date creat la exerciţiul anterior, toate persoanele de sex feminin care au la proiect nota 9 sau 10, sau au luat nota 10 la examen:
+
+title "Exemplu de operatori logici";
+proc print data=work.studenti;
+where Sex eq 'F' and
+(Proiect in (9 10) or
+examen eq 10);
+var Sex Activitate Proiect Examen; 
+run;
+
+2. Instrucţiunea IF
+Sintaxa
+If conditie THEN actiune;
+
+IF conditie THEN actiune1 
+ELSE actiune2;
+
+Atunci când expresia logică este evaluată ca fiind adevărată, se execută instrucţiunile ce urmează cuvântului cheie THEN. Dacă expresia nu este adevărată, programul continuă să proceseze următoarele instrucţiuni, sau ramura ELSE dacă aceasta există. 
+Atenţie! Valorile numerice lipsă sunt tratate logic ca cel mai negativ număr ce poate fi referit, astfel încât atunci când o astfel de valoare este testată într-o expresie IF, programul va evalua rezultatul testării ca fiind TRUE. 
+Atunci când se doreşte verificarea mai multor condiţii printr-o succesiune de clauze IF este recomandată utilizarea variantei IF...ELSE...IF. Acest lucru duce la o evaluare mai eficientă a programului, deoarece SAS nu mai testează condiţiile ELSE rămase atunci când identifică o ramură IF a cărei condiţie este evaluată ca adevărată. 
+
+Exerciţiul 3:  Folosind datele prezentate la exerciţiul 1, să se creeze o nouă variabilă care să reprezinte grupe de vârstă. 
+
+data Studenti;
+length Sex $ 1;
+input Varsta Sex Proiect Activitate Examen;
+            if Varsta lt 20 and not missing(Varsta) then GrupVarsta = 1;
+else if Varsta ge 20 and Varsta lt 40 then GrupVarsta = 2;
+else if Varsta ge 40 and Varsta lt 60 then GrupVarsta = 3;
+else if Varsta ge 60 then GrupVarsta = 4;
+datalines;
+21 M 8 9 8
+. F 9 9 9
+35 M 8 8 8
+48 F . . 7
+59 F 9 7 9
+15 M 8 . 9
+67 F 9 8 9
+. M 6 7 6
+35 F 7 7 8
+49 M 5 5 8
+;
+title "Date studenti";
+proc print data=Studenti noobs;
+run;
+
+Rezultatul rulării acestui exemplu este un raport ce conține, pe lângă datele introduse, grupa de vârstă a fiecărui student, aşa cum se observă în Figura 1. 
+
+
+Figura 1.  Raportul datelor studenţilor
+Selectarea observaţiilor
+Dacă se doreşte extragerea unui subset de date dintr-un fişier de date sau dintr-un set de date SAS existent, se poate utiliza o formă specială a instrucţiunii IF care permite preluarea exclusiv a acelor rânduri din setul iniţial care îndeplinesc o condiţie specificată. 
+Sintaxa:
+IF conditie;                           /*Atentie! Lipseşte Then*/
+unde ‘conditie’ este o expresie SAS. 
+Dacă condiţia este adevărată, pasul ‘Data’ continuă să proceseze observaţia. Dacă condiţia este falsă nu se mai procesează nimic, controlul revenind la începutul pasului ‘Data’ pentru procesarea următorului rând. 
+
+Exerciţiul 4. Folosind setul de date anterior, să se afişeze exclusiv datele studenţilor de sex feminin.
+
+data Femei;
+length Sex $ 1;
+input Varsta Sex Proiect Activitate Examen;
+if Sex eq 'F';
+datalines;
+21 M 8 9 8
+. F 9 9 9
+35 M 8 8 8
+48 F . . 7
+59 F 9 7 9
+15 M 8 . 9
+67 F 9 8 9
+. M 6 7 6
+35 F 7 7 8
+49 M 5 5 8
+;
+title "Date studente";
+proc print data=Femei;
+run;
+
+Rezultatul rulării acestui program este prezentat în figura 2.
+
+Figura 2.  Raport studenţi de sex feminin
+Evitarea trunchierii valorilor la crearea de variabile noi
+La crearea de noi variabile pornind de la expresii condiţionale, SAS stabileşte lăţimea noii variabile în funcţie valoarea primei observaţii din tabelul rezultat. Mai ales pentru variabilele de tip caracter, este posibil să aibă loc trunchieri în cazul în care valorile înregistrărilor următoare trebuie stocate pe o lăţime mai mare decât a primei înregistrări. O soluţie pentru evitarea trunchierilor este stabilirea în avans a lăţimii noii variabile create, asftel încât aceasta să fie acoperitoare pentru toate valorile care se intenţionează a se memora.
+
+Exercitiul 5. Se cunosc datele referitoare la proiectele anuale desfăşurate în cadrul unei companii. Pentru proiectele a căror buget este mai mic sau egal cu 10.000, se va realiza o raportare lunară a rezultatelor, iar pentru cele a căror bugetul depaşeşte această sumă, raportarea va fi bilunară. Se va adăuga o nouă variabilă pentru a evidenția frecvenţa raportării. De asemenea, se va evidenția printr-o variabilă nouă faptul că prima categorie de proiecte va avea ca termen de prezentare a rezultatelor în cadrul consiliului de administare data de 17 decembrie 2018, iar cea de-a doua categorie data de 20 decembrie 2018. 
+data proiecte;
+length Departament $ 9;
+input CodProiect Departament $ Valoare;
+datalines;
+312 Productie 8720
+313 Achizitii 12570
+314 Productie 39750
+315 Desfacere 7380
+316 Desfacere 18390
+;
+run;
+*/fara stabilirea latimii frecventei de raportare; 
+data proiecte1;
+set proiecte;
+if Valoare le 10000 then 
+	do;
+	Raportare="Lunara";
+	Prezentare='17dec2018'd;
+	end;
+else 
+	do;
+	Raportare="Bilunara";
+	Prezentare='20dec2018'd;
+		end;
+run;
+*/cu stabilirea latimii frecventei de raportare; 
+data proiecte2;
+set proiecte;
+length Raportare $8;
+if Valoare le 10000 then 
+	do;
+	Raportare="Lunara";
+	Prezentare='17dec2018'd; *constanta de tip data;
+	end;
+else 
+	do;
+	Raportare="Bilunara";
+	Prezentare='20dec2018'd;
+		end;
+run;
+
+title "Proiecte companie - fara impunerea latimii coloanei Raportare";
+proc print data=proiecte1 noobs;
+format Prezentare ddmmyy10.;
+format Valoare COMMA8.;
+run;
+title "Proiecte companie - cu impunerea latimii coloanei Raportare";
+proc print data=proiecte2 noobs;
+format Prezentare ddmmyy10.;
+format Valoare COMMA8.;
+run;
+Instrucțiunea SET se poate utiliza cu opțiunea KEEP sau DROP pentru a păstra sau a elimina anumite coloane din setul de date.
+!Observaţi rezultatele obţinute şi rulaţi procedura de afişare a rezultatelor şi pentru setul de date proiecte2. Rezultatul rulării celor două programe este disponibil în figura 3.
+
+
+Figura 3.  Raport privind proiectele companiei în două variante
+A alege între WHERE sau IF pentru selectarea înregistrărilor
+Ambele intrucţiuni WHERE şi IF se pot folosi pentru a selecta înregistrările care vor fi incluse în noul set de date. Fiecare dintre acestea are însă anumite limite în utilizare, şi anume: 
+în secţiunile de proceduri se foloseşte numai instrucţiunea WHERE, nu şi IF;
+dacă WHERE se foloseşte în cadrul secţiunii de date, atunci expresiile sale condiţionale trebuie să refere numai variabile din setul de date de intrare;
+WHERE nu poate folosi în expresii condiţionale bazate pe variabile create în secţiunea de date prin declaraţii de atribuire.
+
+Exerciţiul 6. Să se creeze pornind de la setul de date de la exerciţiul 1, un nou set de date care conţine toate persoanele de sex masculin care au nota finală peste 7, ştiind că nota finală se calculează ca medie ponderată între cele trei note obţinute, cu ponderile de 20%, 30% şi respectiv 50%. 
+
+data Studenti1;
+set Studenti;
+	where Sex eq 'M';
+	NotaFinala=SUM(Proiect*0.3+Activitate*0.2+Examen*0.5);
+	if NotaFinala>7;
+run;
+Title "Lista studentilor de sex masculin cu nota finala peste 7";
+proc print data=Studenti1 noobs;
+run;
+
+Rezultatul rulării acestui program este prezentată în figura 4.
+
+Figura 4.  Raport studenţi de sex masculin cu nota finala peste 7
+3. Instrucţiunea SELECT
+Această instrucţiune poate fi utilizată ca o alternativă la o serie de instrucţiuni IF ELSE IF. 
+Sintaxa
+SELECT (expresie_de_selectie);
+	WHEN (expresie_WHEN1) instructiune 1;
+	WHEN (expresie_WHEN2) instructiune 2;
+	…..
+OTHERWISE  instrucţiune_implicită;
+END;
+Expresia de selecţie este comparată cu fiecare expresie din WHEN. Dacă rezultatul comparării este TRUE, atunci se execută instrucţiunea corespunzătoare şi controlul programului trece la finalul instrucțiunii SELECT. Dacă comparaţia nu este adevărată, se evaluează următoarea ramură WHEN. Dacă nici una dintre comparaţiile cu expresiile WHEN nu rezultă ca fiind adevărate, atunci se execută OTHERWISE. Atentie! Aceasta poate fi şi null. 
+
+Exemplu:
+
+SELECT (GrupVarsta);
+WHEN (1) Limit = 110;
+WHEN (2) Limit = 120;
+WHEN (3) Limit = 130;
+OTHERWISE ;
+END;
+
+Observatie! Dacă nu se include ramura OTHERWISE, iar toate comparaţiile anterioare sunt false, execuţia programului se încheie. 
+Dacă nu este precizată o expresie de selecţie, fiecare ramură WHEN este evaluată pentru a vedea dacă expresie_WHEN este adevărată sau falsă. 
+
+Exercitiul 7. Rezolvaţi cerinţa de la exerciţiul 1 folosind o expresie SELECT. 
+
+data Studenti2;
+length Sex $ 1;
+input Varsta Sex Proiect Activitate Examen;
+	SELECT;
+		WHEN (missing(Varsta)) GrupVarsta= . ;
+		WHEN (Varsta lt 20) GrupVarsta=1;
+		WHEN (Varsta lt 40) GrupVarsta=2;
+		WHEN (Varsta lt 60) GrupVarsta=3;
+		OTHERWISE GrupVarsta=4;
+	END;		
+datalines;
+21 M 8 9 8
+. F 9 9 9
+35 M 8 8 8
+48 F . . 7
+59 F 9 7 9
+15 M 8 . 9
+67 F 9 8 9
+. M 6 7 6
+35 F 7 7 8
+49 M 5 5 8
+;
+title "Date studenti introduse cu SELECT";
+proc print data=Studenti2;
+run;
+
+Rezultatul rulării este ilustrat în figura 5.
+
+Figura 5. Raport studenţi realizat cu SELECT
+4. Structuri repetitive 
+Structurile repetitive permit execuţia unui set de instrucţiuni în mod repetat, cât timp este îndeplinită o anumită condiţie sau până se atinge un număr prestabilit de iteraţii. În SAS putem realiza acest lucru folosind grupurile DO, bucla DO sau instrucţiunile DO WHILE şi DO UNTIL. 
+
+Grupul DO
+Sintaxa
+
+Do
+Instrucţiune 1;
+Instrucţiune 2;
+...
+Instrucţiune n;
+End;
+
+Instrucţiunile cuprinse în cadrul unei structuri Do poartă numele de “grup Do”. Acest mod de lucru este mai eficient decât utilizarea mai multor instrucţiuni IF. 
+
+Exercitiul 8.  Folosind datele cunoscute, să se adauge două variable noi, GrupVarsta şi Medie calculate după cum urmează: dacă vârsta este mai mică de 39 de ani, valoarea pt GrupVarsta va fi ‘grup1’ iar Media se va calcula ca media ponderată între proiect (40%) şi Examen (60%). Dacă vârsta este mai mare sau egală cu 39 GrupVarstă=’grup2’, iar media se calculează ca medie aritmetică. 
+
+data Medii;
+length Sex $ 1
+GrupVarsta $ 13;
+infile '/home/nume.prenume/datesas.txt' missover;
+input Varsta Sex Proiect Activitate Examen;
+if missing(Varsta) then delete;
+if Varsta le 39 then 
+do;
+GrupVarsta = 'Grup1';
+Medie = .4*Proiect + .6*Examen;
+             end;
+else if Varsta gt 39 then
+do;
+GrupVarsta  = 'Grup2';
+medie = (Proiect + Examen)/2;
+             end;
+run;
+title "Raportul Mediilor Studentilor";
+proc print data=medii noobs;
+run;
+
+În cazul în care se întâlneşte o valoare NULL pentru variabila Vârstă, funcţia MISSING returnează valoarea TRUE. Instrucţiunea DELETE împiedică adăugarea valorii curente la setul de date şi forţează întoarcerea la începutul pasului DATA. Rezultatul rulării programului poate fi observat în Figura 6. 
+
+Figura 6. Raportul mediilor studentilor
+SUM  Operaţia de adunare
+Sintaxa
+Variabilă + increment;
+
+Observaţi că nu există semnul = în această instrucţiune. Se realizează următoarele:
+Se reţine variabila;
+Variabila este iniţializată cu 0;
+Valorile lipsă (NULL) sunt ignorate.
+
+Exerciţiul 9. Dacă se doreşte calculul încasărilor dintr-o săptămână, la sfârşitul fiecărei zile a săptămânii, putem folosi  SUM.
+data Venit;
+input 
+	Zi : $8.
+	venit : dollar6.;
+	Total + Venit;
+format Venit Total dollar8.;
+datalines;
+Luni $1,000
+Marti $1,500
+Miercuri .
+Joi $2,000
+Vineri $3,000
+title "Incasari saptamanale";
+proc print data=venit noobs;
+run;
+După citirea celor două variabile cunoscute, cu formatul specificat se calculează valoarea variabilei Total, ca sumă între Totalul existent şi Venitul curent. Dacă valoarea curentă a variabilei venit este NULL, ea va fi ignorată. Rezultatul rulării programului se poate observa în figura 7. 
+
+Figura 7. Incasări săptămânale
+Bucla DO (buclă cu un număr cunoscut de iteraţii)
+Sintaxa
+
+DO contor=valoare_start to valoare_stop;
+       Set_instrucţiuni;
+END;
+
+O varianta alternativă a sintaxei permite precizarea valorii de incrementare a contorului astfel.
+
+DO contor= valoare_start to valoare stop by valoare incrementare;
+       Set_instrucţiuni;
+END;
+
+Atunci când valoarea de incrementare este omisă, valoarea implicită este 1. 
+De asemenea, contorul poate să realizeze o actualizare descrescătoare, valoarea de incrementare fiind un număr negativ. În această situaţie pentru fiecare iteraţie DO contorul este decrementat cu valoarea specificată Atunci când contorul atinge o valoare mai mică decât valoarea de stop bucla se întrerupe. 
+
+Exerciţiul 10. Calculaţi suma de care veţi dispune la finalul a trei ani, plecând de la o investiţie iniţială de 100$, cu o dobândă anuală de 3.75%.
+
+data Dobanda_Investitie;
+Dobanda = .0375;
+Total = 100;
+do An = 1 to 3;
+Total + Dobanda*Total;
+output;
+end;
+     format Total dollar10.2;
+run;
+title "Evoluţie investiţie";
+proc print data=Dobanda_Investitie noobs;
+run;
+
+Comanda output introdusă în cadrul buclei DO este o instrucţiune pentru SAS de a scrie o valoare în setul de date de ieşire. Un output are loc de obicei la sfârşitul unui pas de tip DATA, dar în acest caz dorim ca el să aibă loc de fiecare dată când este calculat un nou total. Atunci când includem o comanda output în cadrul unui pas DATA (oriunde ar fi inclusă), SAS nu mai execută o scriere automată la finalul pasului DATA. Rezultatul rulării codului de mai sus se observă în figura 8. 
+
+Figura 8. Evoluţie investiţie
+DO WHILE, DO UNTIL
+În loc de a alege o valoare de oprire pentru o buclă iterativă DO, putem să întrerupem iteraţiile atunci când o condiţie este îndeplinită. DO...WHILE este o structură cu verificare anterioară, pe când DO...UNTIL realizează o verificare posterioară. 
+ Sintaxa
+
+
+DO WHILE condiţie
+Set_instrucţiuni;
+END;
+DO UNTIL (condiţie)
+Set_instrucţiuni;
+END;
+
+Observaţie! Atunci când se lucrează cu structura DO UNTIL este foarte important ca condiţia verificată să devină adevărată la un moment dat, pentru a se evita intrarea într-o buclă infinită. O posibilitatea de a evita această situaţie este să combinăm o buclă DO obişnuită cu UNTIL. 
+
+Exerciţiul 11.  Folosind cele două variante DO, aflaţi câţi ani sunt necesari pentru dublarea investiţiei, dacă suma iniţială este de 100$ şi dobânda este de 3,75%. Rezultatul rulării programului se poate observa în figura 9. 
+
+DO WHILE
+data Dublare_venit;
+Dobanda = 0.0375;
+Total = 100;
+do until (Total ge 200);
+An + 1;
+Total = Total + Dobanda*Total;
+output;
+end;	
+format Total dollar10.2;
+run;
+title "Dublare venit";
+proc print data=Dublare_venit noobs;
+run;
+
+DO UNTIL
+data Dublare_venit;
+Dobanda = .0375;
+Total = 100;
+do while (Total le 200);
+An + 1;
+Total = Total + Dobanda*Total;
+output;
+end;
+format Total dollar10.2;
+run;
+proc print data=Dublare_venit noobs;
+title "Dublare venit";
+run;
+
+Figura 9. Dublare venit
+Funcţii SAS
+Funcţiile SAS pot fi folosite pentru a calcula expresii ce stau la baza definirii sau modificării variabilelor SAS. Funcţiile pot lua unul sau mai multe argumente, iar numărul argumentelor este fix sau variabil. Argumentele pot fi constante, variabile sau expresii. Acestea trebuie incluse în paranteze şi separate prin virgulă.  
+
+Exerciţiul 12.  Se consideră datele referitoare la angajaţii unei companii aeriene. Acestea se regăsesc în setul de date SAS Angajaţi. Se cere să se folosescă funcţii SAS pentru a determina veniturile totale anuale încasate de către fiecare angajat, precum şi luna în care angajaţii primesc prima, cunoscând că:
+toţi angajaţii primesc o primă de 500 de dolari în luna în care au fost angajaţi în companie;
+în funcţie vechimea angajatului, se mai oferă un extra bonus cuprins între 5% si 15% din salariul anual.
+Pentru rezolvarea problemei se vor utiliza trei funcţii SAS: SUM(argument1, argument2,…. ), MONTH(data_SAS) şi YRDIF(data_inceput, data_sfarsit, <baza>). O listă completă a funcțiilor predefinite poate fi găsită aici: http://support.sas.com/documentation/cdl/en/allprodslang/63337/HTML/default/viewer.htm#syntaxByType-function.htm 
+Funcţia SUM() returnează suma argumentelor sale şi ignoră valorile lipsă, fiind preferabilă din acest motiv operatorului de adunare care, atunci când primeşte un argument NULL, returnează valoarea NULL. 
+Funcţia MONTH() extrage luna dintr-o dată calendaristică pe care o are ca argument. 
+Funcţia YRDIF() returnează diferența în ani dintre două date calendaristice în funcție de convențiile de numărare a zilelor sau poate returna vârsta/vechimea unei persoane. Pentru mai multe detalii despre această funcție se găsesc aici:    http://support.sas.com/documentation/cdl/en/lefunctionsref/63354/HTML/default/viewer.htm#p1pmmr2dtec32an1vbsqmm3abil5.htm
+
+libname ad_data "/home/nume.prenume";
+data work.venituri;
+set ad_data.angajati;
+prima=500;
+vechime=YRDIF(DataAngajare, TODAY(), 'ACTUAL');
+if vechime lt 5 then spor=0.05; 
+else if vechime ge 5 and vechime lt 10 then spor= 0.1;
+else if vechime>=10 then spor =0.15;
+Venit_total=sum(salariu*(1+spor),prima); 
+format Venit_total DOLLAR10.;
+Luna_prima=month(DataAngajare);
+run; 
+
+title "Venituri totale angajati";
+Proc print data=work.venituri noobs;
+var CodAngajat Nume Prenume Departament Venit_total Luna_prima;
+run;
+
+Rezultatul rulării programului se poate observa în figura 10. 
+
+
+Figura 10. Venituri totale angajati (rezultate parţiale)
+
+Probleme propuse
+Utilizând fişierul Excel  ‘Vanzari’, creaţi cu SELECT un nou set de date SAS ce va conţine Regiune şi VanzariTotale (utilizând optiunea keep), împreună cu o nouă variabilă numită Ponderi, cu următoarele valori:
+1,5 pentru regiunea Nord;
+1,7 pentru regiunea Sud;
+2 pentru regiunile Est şi Vest.
+
+Folosind datele din fişierul Excel ‘Vânzări’, afişaţi toate observaţiile pentru Regiunea Nord şi Cantitatea mai mică de 60. Includeţi în listă orice observaţie unde numele clientului este Pet's are Us.
+
+Aveţi o investiţie iniţială de 1000$, cu o rată a dobânzii trimestriale de 4,25%. În câţi ani veţi obţine 30000$? Utilizați DO WHILE sau DO UNTIL pentru rezolvare. 
+
+Din setul de date Angajati să se afişeze toate persoanele care sunt însoţitori de bord (Codul poziţiei este de tipul “FLTAT1”, “FLTAT2”… “FLTATn).  Se vor afişa codul angajatului, numele, prenumele şi departamentul.
+
+
+
+--- TABLES IN DOCUMENT ---
+--- Table 1 ---
+Operator || Simbol || Cod SAS (mnemonica)
+Egal cu || = || EQ
+Diferit de || ^= or ~= or ¬= || NE
+Mai mic  || < || LT
+Mai mic sau egal || <= || LE
+Mai mare || > || GT
+Mai mare sau egal || >= || GE
+Intr-o lista ||  || IN
+--- End of Table ---
+--- Table 2 ---
+Operator || Descriere || Exemplu
+IS MISSING || Verifică dacă este o valoare lipsă || where varsta is missing
+IS NULL || Echivalent cu IS MISSING || where varsta is null
+BETWEEN AND || Interval închis || where varsta between 20 and 40
+CONTAINS || Găseşte un subşir || where nume contains lex
+LIKE || Compară cu un şablon || Where nume like A_e%
+--- End of Table ---
+--- END OF DOCUMENT: Seminar programare SAS 2 2018.docx ---
+

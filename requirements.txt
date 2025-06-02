@@ -1,8 +1,10 @@
 streamlit==1.32.0
-pandas==2.2.0
-numpy==1.26.0
-matplotlib==3.8.0
+pandas
+numpy
+matplotlib
 seaborn==0.13.0
 python-dateutil==2.9.0
 scikit-learn==1.4.0
 geopandas==0.14.0
+saspy
+statsmodels

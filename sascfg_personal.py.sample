@@ -1,0 +1,33 @@
+# This is a SAMPLE saspy configuration file.
+# 1. COPY this file to your HOME DIRECTORY (e.g., /Users/andreimargelatu/)
+# 2. RENAME it in your home directory to: sascfg_personal.py
+# 3. EDIT the 'saspath' line below to point to YOUR ACTUAL SAS executable.
+
+# This line tells saspy that there's a configuration named 'default' defined below.
+SAS_config_names = ['default']
+
+# This is the 'default' configuration dictionary.
+default = {
+    # 'saspath': '/path/to/your/SASHome/SASFoundation/9.4/bin/sas_u8',
+    # EXAMPLE for macOS with SAS 9.4 (UTF-8 version):
+    'saspath': '/Applications/SASHome/SASFoundation/9.4/bin/sas_u8',  # <-- !!! YOU MUST EDIT THIS PATH !!!
+
+    # If your SAS executable is for a different language or version, adjust accordingly.
+    # For example, for English SAS on Windows, it might be:
+    # 'saspath': r'C:\Program Files\SASHome\SASFoundation\9.4\sas.exe',
+
+    # Optional: Specify encoding if needed (UTF-8 is common for macOS/Linux)
+    'encoding': 'utf-8',
+
+    # Optional: Other SAS startup options if your setup needs them.
+    # For example, if your SAS requires a specific configuration file at startup:
+    # 'options': ["-config", "/Applications/SASHome/SASFoundation/9.4/sasv9.cfg"]
+}
+
+# You can add more named configurations if you have multiple SAS environments.
+# For example:
+# SAS_config_names.append('viya_conn')
+# viya_conn = {
+# 'url': 'http://your-viya-server.com:80',
+# # ... other Viya specific options
+# } 
